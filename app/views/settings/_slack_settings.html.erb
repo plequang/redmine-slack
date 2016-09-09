@@ -46,6 +46,11 @@
 </p>
 
 <p>
+	<label for="settings_no_details">Don't send issue details</label>
+	<input type="checkbox" id="settings_no_details" value="1" name="settings[no_details]" <%= settings['no_details'] == '1' ? 'checked="checked"' : '' %> />
+</p>
+
+<p>
 	<label for="settings_created_template">Issue created template?</label>
 	<textarea id="settings_created_template" name="settings[created_template]" rows="5" cols="80"><%= settings['created_template'] %></textarea>
 </p>
