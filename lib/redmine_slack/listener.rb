@@ -1,4 +1,5 @@
 require 'httpclient'
+require 'erubis'
 
 class SlackListener < Redmine::Hook::Listener
 	def controller_issues_new_after_save(context={})
@@ -10,7 +11,13 @@ class SlackListener < Redmine::Hook::Listener
 		return unless channel and url
 		return if issue.is_private?
 
-		msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
+		template = Setting.plugin_redmine_slack[:created_template]
+		if not template.empty?
+			context = sprintf_context(issue)
+			msg = sprintf(template, context)
+		else
+			msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
+		end
 
 		attachment = {}
 		attachment[:text] = escape issue.description if issue.description
@@ -47,7 +54,13 @@ class SlackListener < Redmine::Hook::Listener
 		return unless channel and url and Setting.plugin_redmine_slack[:post_updates] == '1'
 		return if issue.is_private?
 
-		msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>#{mentions journal.notes}"
+		template = Setting.plugin_redmine_slack[:updated_template]
+		if not template.empty?
+			context = sprintf_context(issue, journal)
+			msg = sprintf(template, context)
+		else
+			msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>#{mentions journal.notes}"
+		end
 
 		attachment = {}
 		attachment[:text] = escape journal.notes if journal.notes
@@ -124,6 +137,36 @@ class SlackListener < Redmine::Hook::Listener
 		end
 
 		speak comment, channel, attachment, url
+	end
+
+	def sprintf_context(issue, journal=nil)
+		slack_user_cf = UserCustomField.find_by_name('Slack User')
+		assigned_slack_user = issue.assigned_to.custom_value_for(slack_user_cf).value if issue.assigned_to and slack_user_cf
+
+		context = {
+			:issue_tracker => escape(issue.tracker),
+			:issue_id => escape(issue.id),
+			:issue_subject => escape(issue.subject),
+			:issue_url => object_url(issue),
+			:issue_status => escape(issue.status),
+			:issue_project => escape(issue.project),
+			:issue_description => escape(issue.description),
+			:issue_author => escape(issue.author),
+			:issue_assigned_to => escape(issue.assigned_to),
+			:issue_assigned_to_slack_user => assigned_slack_user,
+		}
+
+		if journal
+			Rails.logger.debug("jounal.user #{journal.user}")
+			journal_context = {
+				:journal_user => escape(journal.user),
+				:journal_notes => escape(journal.notes)
+			}
+			context.merge!(journal_context)
+			Rails.logger.debug("journal_user #{context[:journal_user]}")
+		end
+
+		context
 	end
 
 	def speak(msg, channel, attachment=nil, url=nil)
