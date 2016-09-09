@@ -12,27 +12,31 @@ class SlackListener < Redmine::Hook::Listener
 
 		msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
 
-		attachment = {}
-		attachment[:text] = escape issue.description if issue.description
-		attachment[:fields] = [{
-			:title => I18n.t("field_status"),
-			:value => escape(issue.status.to_s),
-			:short => true
-		}, {
-			:title => I18n.t("field_priority"),
-			:value => escape(issue.priority.to_s),
-			:short => true
-		}, {
-			:title => I18n.t("field_assigned_to"),
-			:value => escape(issue.assigned_to.to_s),
-			:short => true
-		}]
+		if Setting.plugin_redmine_slack[:no_details] == '1'
+			attachment = nil
+		else
+			attachment = {}
+			attachment[:text] = escape issue.description if issue.description
+			attachment[:fields] = [{
+				:title => I18n.t("field_status"),
+				:value => escape(issue.status.to_s),
+				:short => true
+			}, {
+				:title => I18n.t("field_priority"),
+				:value => escape(issue.priority.to_s),
+				:short => true
+			}, {
+				:title => I18n.t("field_assigned_to"),
+				:value => escape(issue.assigned_to.to_s),
+				:short => true
+			}]
 
-		attachment[:fields] << {
-			:title => I18n.t("field_watcher"),
-			:value => escape(issue.watcher_users.join(', ')),
-			:short => true
-		} if Setting.plugin_redmine_slack[:display_watchers] == 'yes'
+			attachment[:fields] << {
+				:title => I18n.t("field_watcher"),
+				:value => escape(issue.watcher_users.join(', ')),
+				:short => true
+			} if Setting.plugin_redmine_slack[:display_watchers] == 'yes'
+		end
 
 		speak msg, channel, attachment, url
 	end
@@ -49,9 +53,13 @@ class SlackListener < Redmine::Hook::Listener
 
 		msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>#{mentions journal.notes}"
 
-		attachment = {}
-		attachment[:text] = escape journal.notes if journal.notes
-		attachment[:fields] = journal.details.map { |d| detail_to_field d }
+		if Setting.plugin_redmine_slack[:no_details] == '1'
+			attachment = nil
+		else
+			attachment = {}
+			attachment[:text] = escape journal.notes if journal.notes
+			attachment[:fields] = journal.details.map { |d| detail_to_field d }
+		end
 
 		speak msg, channel, attachment, url
 	end
