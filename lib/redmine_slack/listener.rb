@@ -14,7 +14,12 @@ class SlackListener < Redmine::Hook::Listener
 		template = Setting.plugin_redmine_slack[:created_template]
 		if not template.empty?
 			context = sprintf_context(issue)
-			msg = sprintf(template, context)
+			begin
+				msg = sprintf(template, context)
+			rescue Exception => ex
+				msg = "redmine_slack plugin error in custom message format: #{ex}"
+				Rails.logger.warn(ex)
+			end
 		else
 			msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
 		end
@@ -61,7 +66,12 @@ class SlackListener < Redmine::Hook::Listener
 		template = Setting.plugin_redmine_slack[:updated_template]
 		if not template.empty?
 			context = sprintf_context(issue, journal)
-			msg = sprintf(template, context)
+			begin
+				msg = sprintf(template, context)
+			rescue Exception => ex
+				msg = "redmine_slack plugin error in custom message format: #{ex}"
+				Rails.logger.warn(ex)
+			end
 		else
 			msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>#{mentions journal.notes}"
 		end
@@ -165,13 +175,11 @@ class SlackListener < Redmine::Hook::Listener
 		}
 
 		if journal
-			Rails.logger.debug("jounal.user #{journal.user}")
 			journal_context = {
 				:journal_user => escape(journal.user),
 				:journal_notes => escape(journal.notes)
 			}
 			context.merge!(journal_context)
-			Rails.logger.debug("journal_user #{context[:journal_user]}")
 		end
 
 		context
