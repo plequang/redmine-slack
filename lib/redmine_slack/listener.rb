@@ -12,7 +12,7 @@ class SlackListener < Redmine::Hook::Listener
 		return if issue.is_private?
 
 		template = Setting.plugin_redmine_slack[:created_template]
-		if not template.empty?
+		if template and not template.empty?
 			context = sprintf_context(issue)
 			begin
 				msg = sprintf(template, context)
@@ -64,7 +64,7 @@ class SlackListener < Redmine::Hook::Listener
 		return if issue.is_private?
 
 		template = Setting.plugin_redmine_slack[:updated_template]
-		if not template.empty?
+		if template and not template.empty?
 			context = sprintf_context(issue, journal)
 			begin
 				msg = sprintf(template, context)
