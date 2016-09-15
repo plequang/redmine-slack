@@ -13,12 +13,13 @@ class SlackListener < Redmine::Hook::Listener
 
 		template = Setting.plugin_redmine_slack[:created_template]
 		if template and not template.empty?
-			context = sprintf_context(issue)
 			begin
+				context = sprintf_context(issue)
 				msg = sprintf(template, context)
 			rescue Exception => ex
 				msg = "redmine_slack plugin error in custom message format: #{ex}"
-				Rails.logger.warn(ex)
+				Rails.logger.warn("redmine_slack plugin error: #{ex}")
+				Rails.logger.warn(ex.backtrace)
 			end
 		else
 			msg = "[#{escape issue.project}] #{escape issue.author} created <#{object_url issue}|#{escape issue}>#{mentions issue.description}"
@@ -65,12 +66,13 @@ class SlackListener < Redmine::Hook::Listener
 
 		template = Setting.plugin_redmine_slack[:updated_template]
 		if template and not template.empty?
-			context = sprintf_context(issue, journal)
 			begin
+				context = sprintf_context(issue, journal)
 				msg = sprintf(template, context)
 			rescue Exception => ex
 				msg = "redmine_slack plugin error in custom message format: #{ex}"
-				Rails.logger.warn(ex)
+				Rails.logger.warn("redmine_slack plugin error: #{ex}")
+				Rails.logger.warn(ex.backtrace)
 			end
 		else
 			msg = "[#{escape issue.project}] #{escape journal.user.to_s} updated <#{object_url issue}|#{escape issue}>#{mentions journal.notes}"
@@ -158,8 +160,17 @@ class SlackListener < Redmine::Hook::Listener
 	end
 
 	def sprintf_context(issue, journal=nil)
-		slack_user_cf = UserCustomField.find_by_name('Slack User')
-		assigned_slack_user = issue.assigned_to.custom_value_for(slack_user_cf).value if issue.assigned_to and slack_user_cf
+		if issue.assigned_to
+			if issue.assigned_to.is_a? User
+				slack_user_cf = UserCustomField.find_by_name('Slack User')
+			elsif issue.assigned_to.is_a? Group
+				slack_user_cf = GroupCustomField.find_by_name('Slack User')
+			end
+
+			if slack_user_cf and issue.assigned_to.custom_value_for(slack_user_cf)
+				assigned_slack_user = issue.assigned_to.custom_value_for(slack_user_cf).value
+			end
+		end
 
 		context = {
 			:issue_tracker => escape(issue.tracker),
